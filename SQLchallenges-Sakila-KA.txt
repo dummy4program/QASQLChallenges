@@ -1,0 +1,221 @@
+Sakila Challenge SQL - Keith Alford
+1. List all actors
+
+SELECT * FROM actor;
+
+2. Find the surname of the actor with the forename 'John'
+
+SELECT last_name AS Surname
+FROM actor
+WHERE first_name = "John";
+
+3. Find all actors with surname 'Neeson'
+
+SELECT *
+FROM actor
+WHERE last_name = "Neeson";
+
+4. Find all actors with ID numbers divisible by 10.
+
+SELECT *
+FROM actor
+WHERE actor_id%10=0;
+
+5. What is the description of the movie with an ID of 100?
+
+SELECT description AS Description
+FROM film
+WHERE film_id = 100;
+
+6. Find every R-rated movie
+
+SELECT title AS "Film title"
+FROM film
+WHERE rating = "R";
+
+7. Find every non-R-rated movie
+
+SELECT title AS "Film title"
+FROM film
+WHERE rating != "R";
+
+8. Find the ten shortest movies
+
+SELECT title AS "Film title", length as "Runtime (minutes)"
+FROM film
+ORDER BY length ASC
+LIMIT 10;
+
+9. Find the movies with the longest runtime, without using LIMIT.
+
+SELECT title AS "Film title", length as "Runtime (minutes)"
+FROM film
+WHERE length = (
+	SELECT Max(length)
+	FROM film
+	)
+ORDER BY title ASC;
+
+10. Find all movies that have deleted scenes.
+
+SELECT title AS "Film title", special_features AS "Special Features"
+FROM film
+WHERE special_features
+LIKE "%Deleted Scenes%";
+
+11. Using HAVING , reverse-alphabetically list the last names that are not repeated
+
+SELECT last_name AS "Surname", COUNT(*) AS "Number of instances"
+FROM actor
+GROUP BY last_name
+HAVING COUNT(*)=1
+ORDER BY last_name DESC;
+
+12. Using HAVING , list the last names that appear more than once, from highest to lowest frequency
+
+SELECT last_name AS "Surname", COUNT(last_name) "Number of instances"
+FROM actor
+GROUP BY last_name
+HAVING COUNT(last_name)>1
+ORDER BY COUNT(last_name) DESC;
+
+13. Which actor has appeared in the most films?
+
+SELECT first_name AS "First Name", last_name AS "Surname"
+FROM actor
+WHERE actor_id=
+	(
+	SELECT actor_id
+	FROM 
+		(
+		SELECT actor_id, COUNT(actor_id) AS total
+		FROM film_actor
+		GROUP BY actor_id
+		ORDER BY total DESC
+		) as results
+	LIMIT 1
+	);
+  
+14. When is 'Academy Dinosaur' due?
+
+SELECT release_year AS "Release year for Academy Dinosaur"
+FROM film
+WHERE title = 'Academy Dinosaur';
+
+15. What is the average runtime of all films?
+
+SELECT AVG(length) AS "Average runtime"
+FROM film;
+
+16. List the average runtime for every film category.
+
+SELECT category AS "Film category", AVG(length) AS "Average runtime"
+FROM nicer_but_slower_film_list
+GROUP BY category;
+
+17. List all movies featuring a robot.
+
+SELECT title AS Title, description AS Description
+FROM film
+WHERE description
+LIKE "%robot%";
+
+18. How many movies were released in 2010?
+
+SELECT COUNT(title) AS "Films released in 2010" FROM film WHERE release_year = 2010;
+
+19. Find the titles of all the horror movies.
+
+SELECT title AS Title, category AS Category
+FROM film_list
+WHERE category = "Horror";
+
+	alternative
+
+SELECT title AS Title, category AS Category
+FROM nicer_but_slower_film_list
+WHERE category LIKE "%horror%";
+
+20. List the full name of the staff member with the ID of 2.
+
+SELECT first_name AS "First Name", last_name AS Surname
+FROM staff
+WHERE staff_id = 2;
+
+21. List all the movies that Fred Costner has appeared in.
+
+SELECT title AS "Films starring Fred Costner"
+FROM nicer_but_slower_film_list
+WHERE actors LIKE "%Fred Costner%";
+
+	alternatively
+
+SELECT title AS "Films starring Fred Costner"
+FROM film
+JOIN film_actor
+ON film.film_id=film_actor.film_id
+WHERE film_actor.actor_id=16;
+
+22.  How many distinct countries are there?
+
+SELECT COUNT(DISTINCT country) AS "Number of countries"
+FROM country;
+
+23. List the name of every language in reverse-alphabetical order.
+
+SELECT name AS "Language"
+FROM language
+ORDER BY name DESC;
+
+24.  List the full names of every actor whose surname ends with '-son' in alphabetical order by their forename.
+
+SELECT first_name AS "First Name", last_name AS "Surname"
+FROM actor_info
+WHERE last_name LIKE "%son"
+ORDER BY first_name ASC;
+
+25. Which category contains the most films?
+
+	As a list
+	
+SELECT category AS "Category", COUNT(category) AS "Number of films"
+FROM film_list
+GROUP BY category
+ORDER BY COUNT(category) DESC;
+
+	Then narrow down to just the categories with the most films
+
+SELECT category AS "Category", COUNT(category) AS "Number of films"
+FROM film_list
+GROUP BY category
+ORDER BY COUNT(category) DESC
+LIMIT 2;
+
+	The above gives two categories with the same top answer but using the film_category table gives only one category with the most films and a different most films amount.
+
+SELECT category_id AS "Category ID", COUNT(film_id) AS Films
+FROM film_category
+GROUP BY category_id
+ORDER BY Films DESC;
+
+	* reported above to Cameron, said to use the film_category data for correct answer.
+	
+	The below adds a join to link the category name to the answer.
+
+SELECT category.name AS "Category", COUNT(film_category.film_id) AS "Number of films"
+FROM film_category
+JOIN category
+ON film_category.category_id = category.category_id
+GROUP BY film_category.category_id
+ORDER BY COUNT(film_category.film_id) DESC;
+
+	And just to show the top one answer
+
+SELECT category.name AS "Category", COUNT(film_category.film_id) AS "Number of films"
+FROM film_category
+JOIN category
+ON film_category.category_id = category.category_id
+GROUP BY film_category.category_id
+ORDER BY COUNT(film_category.film_id) DESC LIMIT 1;
+
+	Made attempts to nest a COUNT within a MAX statement so that there wouldn't be a reliance on using LIMIT but still working on making that successful.
