@@ -1,0 +1,142 @@
+1.  List the titles and release dates of movies released between 1983-1993 in reverse chronological order.
+
+SELECT title AS "Movie title", release_date AS "Release date"
+FROM movies
+WHERE release_date >= "1983-01-01" AND release_date <= "1993-12-31"
+ORDER BY release_date DESC;
+
+
+
+2. Without using LIMIT , list the titles of the movies with the lowest average rating.
+
+SELECT movies.title AS Movie, AVG(ratings.rating) AS "AverageRating"
+FROM movies
+JOIN ratings ON movies.id = ratings.movie_id
+GROUP BY movies.title
+HAVING AverageRating = (
+	SELECT MIN(average_rating)
+	FROM (
+		SELECT AVG(rating) AS average_rating
+		FROM ratings
+		GROUP BY movie_id
+		) AS average_results
+	);	
+
+The above gives 69 results whilst the below gives 70 results.
+
+SELECT list_results.Movie, list_results.AverageRating
+FROM (
+	SELECT movies.title AS Movie, AVG(ratings.rating) AS AverageRating
+	FROM ratings
+	JOIN movies ON movies.id = ratings.movie_id
+	GROUP BY ratings.movie_id
+	) AS list_results
+WHERE list_results.AverageRating = (
+		SELECT MIN(average_rating)
+		FROM (
+			SELECT AVG(ratings.rating) AS average_rating
+			FROM ratings
+			GROUP BY ratings.movie_id
+			) AS average_results
+		);
+
+
+
+3. List the unique records for Sci-Fi movies where male 24-year-old students have given 5-star ratings.
+
+SELECT ratings.*
+FROM ratings, genres_movies
+WHERE ratings.user_id IN (
+	SELECT id
+	FROM users
+	WHERE age = 24
+	AND gender = "M"
+	AND occupation_id = (
+		SELECT id
+		FROM occupations
+		WHERE name = "Student"
+		)
+	)
+AND genres_movies.genre_id = (
+	SELECT id
+	FROM genres
+	WHERE name = "Sci-Fi"
+	)
+AND ratings.movie_id = genres_movies.movie_id
+AND ratings.rating = "5"
+ORDER BY movie_id ASC;
+
+	The above works and gives the simplest output for the requirements. However, using the below with joins gives better performance, more information and allows for much easier tailoring of criteria:
+
+SELECT
+movies.title AS Movie,
+movies.id AS "Movie ID",
+genres.name AS Genre,
+user_id AS "User ID",
+users.age AS "User Age",
+users.gender AS "User Gender",
+occupations.name AS "User Occupation",
+ratings.id AS "Rating ID",
+ratings.rating AS "Rating",
+ratings.rated_at AS "Rated at"
+FROM ratings
+JOIN movies ON ratings.movie_id = movies.id
+JOIN genres_movies ON genres_movies.movie_id = movies.id
+JOIN genres ON genres.id = genres_movies.genre_id
+JOIN users ON ratings.user_id = users.id
+JOIN occupations ON users.occupation_id = occupations.id
+AND users.age = 24
+AND users.gender = "M"
+AND occupations.name = "Student"
+AND ratings.rating = "5"
+WHERE genres.name = "Sci-Fi"
+ORDER BY ratings.movie_id ASC;
+
+	Above films can be double checked to be Sci-Fi films using the following list:
+
+	SELECT movies.title, movies.id, genres.name 
+	FROM genres
+	JOIN genres_movies ON genres.id = genres_movies.genre_id
+	JOIN movies ON genres_movies.movie_id = movies.id
+	WHERE genres.name = "Sci-Fi"
+	ORDER BY movies.id ASC;
+
+
+
+4. List the unique titles of each of the movies released on the most popular release day.
+
+SELECT movies.title AS "Movie", release_date AS "Release Date"
+FROM movies
+WHERE release_date = (
+	SELECT release_date
+	FROM (
+		SELECT release_date, COUNT(release_date) AS date_count
+		FROM movies
+		GROUP BY release_date
+		ORDER BY date_count DESC
+		LIMIT 1
+		) as results
+	);
+
+	Could in theory try to rework this to use a nested MAX on the nested COUNT instead of relying on having ORDER BY and assuming there would only ever be one top result for the LIMIT 1 to be relevant - to solve the problem of possibly having two release dates with the same number of movies released on their dates giving joint top results (if you don't have prior knowledge to know to only expect one top result). However, this would end up being essentially pointless because a subquery can't return more than 1 row in MySQL and would throw an error when attempting to if there were more than one joint top result anyway. So using ORDER BY and LIMIT rather than a possibly cleaner MAX statement is at no detriment when relying on subqueries to perform this particular statement.
+
+	Answer is checked by doing
+
+	SELECT release_date, COUNT(release_date)
+	FROM movies
+	GROUP BY release_date
+	ORDER BY COUNT(release_date) DESC;
+
+	SELECT movies.title AS "Movie", release_date AS "Release Date"
+	FROM movies
+	WHERE release_date = "1995-01-01";
+
+
+
+5. Find the total number of movies in each genre; list the results in ascending numeric order.
+
+SELECT genres.name AS "Genre", COUNT(genres_movies.genre_id) AS "Frequency"
+FROM genres
+JOIN genres_movies ON genres.id = genres_movies.genre_id
+GROUP BY Genre
+ORDER BY Frequency ASC;
